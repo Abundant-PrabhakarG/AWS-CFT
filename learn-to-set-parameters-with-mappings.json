@@ -1,0 +1,50 @@
+{
+	"AWSTemplateFormatVersion": "2010-09-09",
+	"Description": "EC2 instance with parameters",
+	"Parameters": {
+		"InstanceType": {
+			"Description": "instance type of virtual server",
+			"Type": "String",
+			"AllowedValues": ["t2.micro", "t2.small", "t2.medium"]
+		},
+		"Subnet": {
+			"Description": "subnet to launch virtual server in",
+			"Type": "AWS::EC2::Subnet::Id"
+		}
+	},
+    "Mappings": {
+        "AWSInstanceType2Arch" : {
+            "t1.micro"    : { "Arch" : "HVM64"  },
+            "t2.nano"     : { "Arch" : "HVM64"  },
+            "t2.micro"    : { "Arch" : "HVM64"  }
+        },
+
+        "AWSInstanceType2NATArch" : {
+            "t1.micro"    : { "Arch" : "NATHVM64"  },
+            "t2.nano"     : { "Arch" : "NATHVM64"  },
+            "t2.micro"    : { "Arch" : "NATHVM64"  }
+        },
+        "AWSRegionArch2AMI" : {
+            "us-east-1"        : {"HVM64" : "ami-0080e4c5bc078760e", "HVMG2" : "ami-0aeb704d503081ea6"},
+            "us-west-2"        : {"HVM64" : "ami-01e24be29428c15b2", "HVMG2" : "ami-0fe84a5b4563d8f27"},
+            "us-west-1"        : {"HVM64" : "ami-0ec6517f6edbf8044", "HVMG2" : "ami-0a7fc72dc0e51aa77"}
+        }
+    },	
+	"Resources": {
+		"EC2Instance": {
+			"Type": "AWS::EC2::Instance",
+			"Properties": {
+                "ImageId": { "Fn::FindInMap" : [ "AWSRegionArch2AMI", { "Ref" : "AWS::Region" },
+                                 { "Fn::FindInMap" : [ "AWSInstanceType2Arch", { "Ref" : "InstanceType" }, "Arch" ] } ] },				
+				"InstanceType": {"Ref": "InstanceType"},
+				"SubnetId": {"Ref": "Subnet"},
+				"Tags": [
+					{
+						"Key": "Name",
+						"Value": "learn-cloudformation-2-parameters"
+					}
+				]
+			}
+		}
+	}
+}
