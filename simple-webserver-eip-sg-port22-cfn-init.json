@@ -1,0 +1,111 @@
+{
+	"AWSTemplateFormatVersion": "2010-09-09",
+	"Description": "Hello World! example",
+	"Parameters": {
+			"AMI": {
+			"Description": "AMI to start virtual server",
+			"Type": "String",
+			"AllowedValues" : [ "ami-f0091d91", "ami-01460aa81365561fe", "ami-0d1cd67c26f5fca19"]
+		},
+		"VPC": {
+			"Description": "The default VPC",
+			"Type": "AWS::EC2::VPC::Id"
+		},
+		"Subnet": {
+			"Description": "A public subnet from default VPC.",
+			"Type": "AWS::EC2::Subnet::Id"
+		},
+		"SubnetType": {
+			"Description": "Choose the type of the subnet.",
+			"Type": "String",
+			"AllowedValues": [
+				"Private",
+				"Public"
+			]
+		}
+	},
+	"Conditions": {
+		"HasPublicSubnet": {"Fn::Equals": [{"Ref": "SubnetType"}, "Public"]}
+	},
+	"Resources": {
+		"EC2Instance": {
+			"Type": "AWS::EC2::Instance",
+			"Metadata" : {
+				"AWS::CloudFormation::Init" : {
+					"config" : {
+						"packages": {
+							"yum" : {"httpd" : []}
+						},
+						"files" : {
+							"/var/www/html/index.html": {
+								"content": "<html><body>Hello World!</body></html>",
+								"mode"  : "000644",
+								"owner" : "root",
+								"group" : "root"
+							}
+						},
+						"services" : {
+							"sysvinit": {
+								"httpd": {"enabled": "true", "ensureRunning": "true"}
+							}
+						}
+					}
+				}
+			},			
+			"Properties": {
+				"ImageId": {"Ref": "AMI"},
+				"InstanceType": "t2.micro",
+				"NetworkInterfaces": [{
+					"AssociatePublicIpAddress": {"Fn::If" : ["HasPublicSubnet", "true", "false"]},
+					"DeviceIndex": "0",
+					"GroupSet": [{"Ref": "WebserverSecurityGroup"}],
+					"SubnetId": {"Ref": "Subnet"}
+				}],
+				"Tags": [{
+					"Key": "Name",
+					"Value": "hello-world"
+				}],
+				"UserData": {"Fn::Base64": {"Fn::Join": ["", [
+					"#!/bin/bash -ex\n",
+					"/opt/aws/bin/cfn-init -s ", {"Ref": "AWS::StackName"}, " -r EC2Instance --region ", {"Ref": "AWS::Region"}, "\n"
+				]]}}
+			}
+		},
+		"WebserverSecurityGroup": {
+			"Type": "AWS::EC2::SecurityGroup",
+			"Properties": {
+				"GroupDescription": "hello-world-webserver",
+				"VpcId": {"Ref": "VPC"},
+				"SecurityGroupIngress": [{
+					"CidrIp": "0.0.0.0/0",
+					"FromPort": 80,
+					"IpProtocol": "tcp",
+					"ToPort": 80
+				},
+				{
+					"CidrIp": "0.0.0.0/0",
+					"FromPort": 22,
+					"IpProtocol": "tcp",
+					"ToPort": 22
+				}
+				]
+			}
+		},
+        "IPAddress" : {
+            "Type" : "AWS::EC2::EIP"
+        },
+        "IPAssoc" : {
+            "Type" : "AWS::EC2::EIPAssociation",
+            "Properties" : {
+                "InstanceId" : { "Ref" : "EC2Instance" },
+                "EIP" : { "Ref" : "IPAddress" }
+            }
+        }		
+	},
+	"Outputs": {
+		"HelloWorldURL": {
+			"Description": "The URL pointing to Hello World!.",
+			"Value": {"Fn::If" : ["HasPublicSubnet", {"Fn::Join": ["", ["http://", {"Fn::GetAtt": ["EC2Instance", "PublicIp"]}]]}, {"Fn::Join": ["", ["http://", {"Fn::GetAtt": ["EC2Instance", "PrivateIp"]}]]}]}
+		}
+	}
+}
