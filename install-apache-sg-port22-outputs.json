@@ -1,0 +1,81 @@
+{
+	"AWSTemplateFormatVersion": "2010-09-09",
+	"Description": "EC2 instance with functions",
+	"Parameters": {
+		"VPC": {
+			"Description": "The default VPC",
+			"Type": "AWS::EC2::VPC::Id"
+		},	
+		"AMI": {
+			"Description": "AMI to start virtual server",
+			"Type": "String",
+			"AllowedValues" : [ "ami-f0091d91", "ami-01460aa81365561fe", "ami-0d1cd67c26f5fca19"]
+		},
+		"InstanceType": {
+			"Description": "instance type of virtual server",
+			"Type": "String",
+			"AllowedValues": ["t2.micro", "t2.small", "t2.medium"]
+		},
+		"Subnet": {
+			"Description": "subnet to launch virtual server in",
+			"Type": "AWS::EC2::Subnet::Id"
+		}
+	},
+	"Resources": {
+		"EC2Instance": {
+			"Type": "AWS::EC2::Instance",
+			"Properties": {
+				"ImageId": {"Ref": "AMI"},
+				"InstanceType": {"Ref": "InstanceType"},
+				"NetworkInterfaces": [{
+					"DeviceIndex": "0",
+					"GroupSet": [{"Ref": "WebserverSecurityGroup"}],
+					"SubnetId": {"Ref": "Subnet"}
+				}],				
+				"Tags": [
+					{
+						"Key": "Name",
+						"Value": "learn-cloudformation-3-functions"
+					}
+				],
+				"UserData": {"Fn::Base64": {"Fn::Join": ["", [
+					"#!/bin/bash -ex\n",
+					"yum install -y httpd\n",
+					"cd /var/www/html\n",
+					"echo '<html><body>Hello World!</body></html>' > index.html\n",
+					"service httpd start\n"
+				]]}}
+			}
+		},
+		"WebserverSecurityGroup": {
+			"Type": "AWS::EC2::SecurityGroup",
+			"Properties": {
+				"GroupDescription": "apachewebserver",
+				"VpcId": {"Ref": "VPC"},				
+				"SecurityGroupIngress": [{
+					"CidrIp": "0.0.0.0/0",
+					"FromPort": 80,
+					"IpProtocol": "tcp",
+					"ToPort": 80
+				},
+				{
+					"CidrIp": "0.0.0.0/0",
+					"FromPort": 22,
+					"IpProtocol": "tcp",
+					"ToPort": 22
+				}
+				]
+			}
+		}
+	},
+	"Outputs": {
+		"InstanceId": {
+			"Value": {"Ref": "EC2Instance"},
+			"Description": "ID of virtual server"
+		},
+		"PublicIPAddress": {
+			"Value": {"Fn::GetAtt": ["EC2Instance", "PublicIp"]},
+			"Description": "public IP address of virtual server"
+		}
+	}	
+}
