@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "EC2 and SSH showcase: https://github.com/widdix/aws-ec2-ssh",
+  "Description": "The EC2 and SSH showcase: https://github.com/widdix/aws-ec2-ssh",
   "Parameters": {
     "VPC": {
       "Description": "The VPC the EC2 instance is launched into.",
